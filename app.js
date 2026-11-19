@@ -4,7 +4,7 @@ const C = {ink:'#262b3d',muted:'#72798b',line:'#dfe3ec',purple:'#7150d3',pl:'#ee
 const score = [[2,4,3,6,5],[4,2,1],[1,3,5,4,6,3],[4,3,2,1]];
 const phases = [];
 score.forEach((notes,t)=>{
-  phases.push({t,kind:'predict',n:0,duration:1900},{t,kind:'inject',n:0,duration:1500});
+  phases.push({t,kind:'predict',n:0,duration:1600},{t,kind:'prefix_predict',n:0,duration:3000},{t,kind:'inject',n:0,duration:1500});
   notes.forEach((_,n)=>phases.push({t,kind:'event',n:n+1,duration:850}));
   phases.push({t,kind:'stop',n:notes.length,duration:1400},{t,kind:'summary',n:notes.length,duration:1400},{t,kind:'feedback',n:notes.length,duration:2400},{t,kind:'receive',n:notes.length,duration:1300});
   if(t<score.length-1)phases.push({t,kind:'advance',n:notes.length,duration:1800});
@@ -58,7 +58,7 @@ function renderPrinter(s){
     $('paper-notes-'+r).innerHTML=notes.slice(0,count).map((p,n)=>note(134+n*28,y+23,p,C.teal,.85)).join('')+(rowFinished(r,s)?path(`M301 ${y}v24`,C.teal,2):'');
     $('paper-row-'+r).firstChild.setAttribute('fill',r===s.t&&s.kind!=='done'?'#f0ebff':'transparent');
   });
-  const x=s.kind==='predict'||s.kind==='inject'||s.kind==='advance'?125:Math.min(300,134+Math.max(0,s.n-1)*28);
+  const x=['predict','prefix_predict','inject','advance'].includes(s.kind)?125:Math.min(300,134+Math.max(0,s.n-1)*28);
   $('gantry').setAttribute('transform',`translate(0 ${125+(s.kind==='advance'?s.t+1:s.t)*69})`);
   $('printhead').setAttribute('transform',`translate(${x} 0)`);
   $('gantry').style.opacity=s.kind==='done'?'.35':'1';
@@ -67,7 +67,8 @@ function renderPrinter(s){
 function narration(s){
   const t=s.t+1, h=`h${sub(t)}`, p=`P${sub(t)}`, n=s.n;
   const all={
-    predict:[tr('PREDICT','预测指导'),tr(`History becomes guidance for bar ${t}.`,`根据历史，产生第 ${t} 小节的隐空间指导。`),tr(`The Time Decoder produces hidden state ${h}. A learned connector turns it into the latent prefix ${p}.`,`Time Decoder 产生隐藏状态 ${h}，再通过可学习连接器转换成隐状态前缀 ${p}。`),tr('The print head is positioned for a new row.','打印头就位，准备打印新的一行。'),tr(`<strong>${h} is a predicted latent representation</strong> for the target bar, not a musical event.`,`<strong>${h} 是面向目标小节的隐空间预测表示</strong>，不是音乐事件。`)],
+    predict:[tr('HISTORY','读取历史'),tr(`The Time Decoder forms ${h} from history.`,`Time Decoder 根据历史产生隐藏状态 ${h}。`),tr(`This hidden state is used to predict the guidance prefix for the next bar to be generated: bar ${t}.`,`这个隐藏状态将用于预测待生成的下一小节（第 ${t} 小节）的指导前缀。`),tr('The print head is positioned for a new row.','打印头就位，准备打印新的一行。'),tr(`<strong>${h} is ready; ${p} has not been predicted yet.</strong>`,`<strong>${h} 已就绪；${p} 尚未预测。</strong>`)],
+    prefix_predict:[tr('PREDICT','预测前缀'),tr(`The Time Decoder predicts ${p} to guide the next bar.`,`Time Decoder 预测指导下一小节生成的前缀 ${p}。`),tr(`${h} → learned projection → ${p}. These four latent vectors guide bar ${t}; the Note Decoder is still waiting.`,`${h} → 可学习映射 → ${p}。这 4 个隐状态向量将指导第 ${t} 小节，Note Decoder 此时仍在等待。`),tr('The next row is being prepared. Printing has not started.','正在准备下一行，音符尚未开始打印。'),tr(`<strong>The prediction output is ${p}.</strong> All four prefix vectors are produced together from ${h}.`,`<strong>预测的产物是 ${p}。</strong>4 个前缀向量由 ${h} 一次映射产生。`)],
     inject:[tr('INJECT','注入前缀'),tr(`Inject ${p} before the first event.`,`先注入 ${p}，再生成第一个事件。`),tr(`Four latent vectors condition the Note Decoder for bar ${t}. This guidance remains available throughout the row.`,`4 个隐状态前缀向量指导第 ${t} 小节的 Note Decoder，并在整行生成过程中保持可用。`),tr('Ready to print. The paper stays on this row.','准备开始打印，纸张停留在当前行。'),tr(`<strong>${p} is a sequence of hidden vectors.</strong> It guides all events in this bar.`,`<strong>${p} 是一段隐状态向量前缀。</strong>它指导本小节内所有事件的生成。`)],
     event:[tr('GENERATE','生成事件'),tr(`Event ${n} in bar ${t}. The Time Decoder waits.`,`第 ${t} 小节的第 ${n} 个事件：Time Decoder 等待中。`),tr(`The Note Decoder predicts x${sub(t)},${sub(n)} from the latent guidance and preceding events. The bar index t does not advance.`,`Note Decoder 根据隐状态指导及此前事件预测 x${sub(t)},${sub(n)}。小节时间步 t 不前进。`),tr('<strong>Print left to right.</strong> Do not advance to the next row.','<strong>从左向右打印。</strong>当前行完成之前不换行。'),tr(`<strong>${p} stays in context.</strong> Each new event conditions the next event.`,`<strong>${p} 持续提供指导。</strong>每个新事件又参与下一事件的预测。`)],
     stop:[tr('END BAR','小节结束'),tr(`STO closes bar ${t}. Only now is the row complete.`,`STO 结束第 ${t} 小节，当前行此时才完成。`),tr('The Note Decoder emits the stop event. No events from the following bar were generated in parallel.','Note Decoder 输出小节结束事件。下一小节的事件尚未开始生成。'),tr('<strong>The row is finished.</strong> The next row can now be prepared.','<strong>当前行打印完成。</strong>现在才可以准备下一行。'),tr('<strong>STO is the boundary</strong> between within-bar generation and the next time step.','<strong>STO 是边界：</strong>当前小节的事件生成结束，才允许准备下一步。')],

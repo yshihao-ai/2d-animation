@@ -14,18 +14,18 @@ function interactionState(s) {
 }
 function renderDecoder(s) {
   const q=interactionState(s),y=q.rowY,t=s.t+1,done=s.kind==='done';
-  const event=s.kind==='event',predict=s.kind==='predict',inject=s.kind==='inject',summary=s.kind==='summary';
+  const event=s.kind==='event',predict=s.kind==='predict',prefixPredict=s.kind==='prefix_predict',inject=s.kind==='inject',summary=s.kind==='summary';
   const X=j=>328+j*64,mid=j=>X(j)+24;
   const duration=(s.duration/1000)/speed;
-  const tdState=done?tr('COMPLETE','完成'):predict?tr('PREDICT h','预测 h')+sub(t):q.received?tr('FEEDBACK RECEIVED','已收到反馈'):tr('WAIT · t IS FIXED','等待 · t 不前进');
-  const ndState=event?`n = ${s.n}  →  ${s.n+1}`:inject?tr('RECEIVE PREFIX','接收前缀'):predict?tr('WAIT FOR GUIDANCE','等待隐状态指导'):tr('BAR COMPLETE','小节已结束');
+  const tdState=done?tr('COMPLETE','完成'):prefixPredict?tr('PREDICT PREFIX P','预测前缀 P')+sub(t):predict?tr('COMPUTE h','计算 h')+sub(t):q.received?tr('FEEDBACK RECEIVED','已收到反馈'):tr('WAIT · t IS FIXED','等待 · t 不前进');
+  const ndState=event?`n = ${s.n}  →  ${s.n+1}`:inject?tr('RECEIVE PREFIX','接收前缀'):predict||prefixPredict?tr('WAIT FOR PREFIX','等待预测前缀'):tr('BAR COMPLETE','小节已结束');
   let o=`<svg data-animation="interaction" data-phase="${s.kind}" data-time="${t}" viewBox="0 0 960 744" role="img" aria-label="${tr('A two-dimensional decoding lattice. Time Decoder moves vertically only after Note Decoder finishes the row and returns its summary.','二维解码网格：Note Decoder 横向完成整行并返回总结后，Time Decoder 才能纵向推进。')}">${definitions}`;
   // The model itself occupies the axes; there is no separate 1D pipeline.
   o+=rect(24,26,200,645,'#f5f1ff','#e4d9fc',18);
   o+=text(124,59,'Time Decoder',C.purple,24,'text-anchor="middle" font-weight="650"');
   o+=text(124,88,tr('BAR AXIS · t ↓','小节维度 · t ↓'),C.purple,17,'text-anchor="middle"');
-  o+=rect(43,108,162,33,predict||q.received?C.purple:'#e6dff6','none',6);
-  o+=text(124,130,tdState,predict||q.received?'#fff':C.purple,12,'text-anchor="middle" font-weight="700"');
+  o+=rect(43,108,162,33,predict||prefixPredict||q.received?C.purple:'#e6dff6','none',6);
+  o+=text(124,130,tdState,predict||prefixPredict||q.received?'#fff':C.purple,12,'text-anchor="middle" font-weight="700"');
   o+=rect(304,26,505,82,C.tl,'#c5e3dc',14);
   o+=text(328,59,'Note Decoder',C.teal,24,'font-weight="650"');
   o+=text(328,87,tr('EVENT AXIS · n →','事件维度 · n →'),C.teal,17);
@@ -65,15 +65,22 @@ function renderDecoder(s) {
     else o+=text(157,ry+7,'?', '#c4b7dc',22,'text-anchor="middle"');
     if(active&&predict){
       o+=`<circle cx="157" cy="${ry}" r="36" fill="none" stroke="${C.purple}" stroke-width="2" class="pulse"/>`;
-      o+=text(155,ry-45,tr('predict hidden state','预测隐藏状态'),C.purple,14,'text-anchor="middle"');
+      o+=text(155,ry-45,tr('history → hidden state','历史 → 隐藏状态'),C.purple,14,'text-anchor="middle"');
       o+=text(73,ry+43,t===1?tr('history','已有历史'):`+ s${sub(t-1)}`,C.purple,14,'text-anchor="middle"');
       o+=arrow(76,ry+32,132,ry+10,C.purple,true);
     }
     if(past||active){
-      o+=arrow(190,ry,236,ry,C.purple,active&&inject);
-      for(let k=0;k<4;k++)o+=rect(242+k*11,ry-18,7,36,active?C.purple:'#b4a0df','none',3);
+      o+=arrow(190,ry,236,ry,C.purple,active&&prefixPredict);
+      o+=text(213,ry-28,tr('Predict','预测'),C.purple,13,'text-anchor="middle" font-weight="700" data-link="predict-prefix"');
+      o+=`<g data-prefix-state="${active&&predict?'pending':active&&prefixPredict?'predicting':'ready'}">`;
+      for(let k=0;k<4;k++){
+        if(active&&predict)o+=rect(242+k*11,ry-18,7,36,'#faf8fe','#c5b2e7',3,'stroke-dasharray="2 2"');
+        else if(active&&prefixPredict)o+=`<rect x="${242+k*11}" y="${ry-18}" width="7" height="36" rx="3" fill="${C.purple}"><animate attributeName="fill" values="#e2d6f7;#e2d6f7;${C.purple};${C.purple}" keyTimes="0;.2;.6;1" dur="${duration}s" fill="freeze"/></rect>`;
+        else o+=rect(242+k*11,ry-18,7,36,active?C.purple:'#b4a0df','none',3);
+      }
+      o+='</g>';
       o+=text(261,ry+43,`P${sub(r+1)}`,C.purple,20,'class="math" text-anchor="middle"');
-      o+=arrow(287,ry,319,ry,C.purple,active&&inject);
+      if(!active||(!predict&&!prefixPredict))o+=arrow(287,ry,319,ry,C.purple,active&&inject);
     }
     for(let j=0;j<7;j++){
       const x=X(j),exists=j<count,isStop=j===notes.length&&finished;
@@ -100,7 +107,7 @@ function renderDecoder(s) {
   });
 
   // A visible decoder head actually travels across the current row.
-  if(!done&&!q.advance){
+  if(!done&&!q.advance&&!predict&&!prefixPredict){
     const target=mid(q.column),previous=event&&s.n>1?mid(q.column-1):target;
     const headColor=event?C.teal:inject?C.purple:'#91aaa3';
     o+=`<g data-actor="note-decoder" transform="translate(${target} ${y-66})">`;
@@ -116,6 +123,15 @@ function renderDecoder(s) {
         o+=motionPacket(guidance,vectors,duration*.8,'data-transfer="prefix-to-note"');
       }
     }
+  }
+  if(prefixPredict){
+    // The connector predicts all four vectors together; this is not token AR.
+    o+=motionPacket(`M190 ${y}L234 ${y}`,`<circle r="5" fill="${C.purple}"/>`,duration*.55,'data-transfer="hidden-to-prefix"');
+    o+=`<circle cx="157" cy="${y}" r="35" fill="none" stroke="${C.purple}" stroke-width="2" class="pulse"/>`;
+    o+=rect(316,y-37,487,94,'#f3edff','#c6b1ed',10,'data-callout="prefix-prediction"');
+    o+=text(337,y-10,tr('Predict prefix for the next bar','预测指导下一小节生成的前缀'),C.purple,22,'font-weight="650"');
+    o+=text(337,y+20,`P${sub(t)} = MLP(h${sub(t)})`,C.purple,25,'class="math"');
+    o+=text(337,y+44,tr(`Target: bar ${t} · Note Decoder waits for P${sub(t)}`,`目标：第 ${t} 小节 · Note Decoder 等待 P${sub(t)}`),C.muted,16);
   }
   if(summary){
     // Events converge visually, without expanding the summary encoder.
