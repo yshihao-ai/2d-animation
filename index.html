@@ -7,8 +7,9 @@
   <meta name="theme-color" content="#fafbfD">
   <title>DID — Music in two dimensions</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23694ad9'/%3E%3Cpath d='M10 10h8v8h-8zm12 0h8v8h-8zM10 22h8v8h-8zm12 0h8v8h-8z' fill='white'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css">
-  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css?v=2">
+  <script src="interaction.js?v=2" defer></script>
+  <script src="app.js?v=2" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -17,7 +18,7 @@
   </header>
   <main>
     <section class="intro">
-      <div><div class="eyebrow" data-i18n="kicker">TWO-DIMENSIONAL AUTOREGRESSIVE MUSIC GENERATION</div><h1 data-i18n="title">Music unfolds. <em>In two dimensions.</em></h1><p class="dek" data-i18n="subtitle">Generate a bar, event by event. Only then, move to the next.</p></div>
+      <div><div class="eyebrow" data-i18n="kicker">TWO-DIMENSIONAL AUTOREGRESSIVE MUSIC GENERATION</div><h1 data-i18n="title">Music unfolds. <em>In two dimensions.</em></h1><p class="dek" data-i18n="subtitle">Two axes. Two decoders. A feedback loop that makes them advance together.</p></div>
       <div class="axis-key"><span><b class="key-line purple"></b><strong>Time Decoder</strong><small data-i18n="across">Across bars · vertical</small></span><span><b class="key-line teal"></b><strong>Note Decoder</strong><small data-i18n="within">Within a bar · horizontal</small></span></div>
     </section>
 
@@ -29,7 +30,7 @@
           <p class="panel-caption" id="printer-caption"></p>
         </section>
         <section class="decoder-panel">
-          <div class="panel-heading"><div><span class="eyebrow" data-i18n="mechanism">THE MECHANISM</span><h2 data-i18n="decoder">Two decoders. One unfolding score.</h2></div><span class="bar-counter" id="bar-counter">BAR 01 / 04</span></div>
+          <div class="panel-heading"><div><span class="eyebrow" data-i18n="mechanism">THE MECHANISM</span><h2 data-i18n="decoder">Watch the two decoders interact.</h2></div><span class="bar-counter" id="bar-counter">BAR 01 / 04</span></div>
           <div id="decoder-stage" class="stage"></div>
           <p class="panel-caption" id="decoder-caption"></p>
         </section>
